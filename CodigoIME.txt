@@ -173,14 +173,12 @@ for(int index = 0; index < 1000; index++)
     
     if(mul_tensao < 0 && periodo_tensao == 0){
       if(counterfreq_tensao == 0){
-        Serial.println("wappm");
         index_inicial_tensao = index;
         counterfreq_tensao++;
       }
       else{
         index_final_tensao = index;
         periodo_tensao = 2*(index_final_tensao - index_inicial_tensao);
-        Serial.println("wappmmm22");
       }
     }
 
