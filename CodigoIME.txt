@@ -1,0 +1,331 @@
+/*
+  WriteMultipleFields
+  
+  Description: Writes values to fields 1,2,3,4 and status in a single ThingSpeak update every 20 seconds.
+  
+  Hardware: ESP32 based boards
+  
+  !!! IMPORTANT - Modify the secrets.h file for this project with your network connection and ThingSpeak channel details. !!!
+  
+  Note:
+  - Requires installation of EPS32 core. See https://github.com/espressif/arduino-esp32/blob/master/docs/arduino-ide/boards_manager.md for details. 
+  - Select the target hardware from the Tools->Board menu
+  - This example is written for a network using WPA encryption. For WEP or WPA, change the WiFi.begin() call accordingly.
+  
+  ThingSpeak ( https://www.thingspeak.com ) is an analytic IoT platform service that allows you to aggregate, visualize, and 
+  analyze live data streams in the cloud. Visit https://www.thingspeak.com to sign up for a free account and create a channel.  
+  
+  Documentation for the ThingSpeak Communication Library for Arduino is in the README.md folder where the library was installed.
+  See https://www.mathworks.com/help/thingspeak/index.html for the full ThingSpeak documentation.
+  
+  For licensing information, see the accompanying license file.
+  
+  Copyright 2020, The MathWorks, Inc.
+*/
+
+#include <WiFi.h>
+#include "secrets.h"
+#include "ThingSpeak.h" // always include thingspeak header file after other header files and custom macros
+
+int porta_tensao = 35;
+int porta_corrente = 34 ; //MUDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAR PARA 25
+//int index = 0;
+int index_final_tensao = 0;
+int index_inicial_tensao = 0;
+
+int index_final_corrente = 0;
+int index_inicial_corrente = 0;
+
+int timer_aux = 0;
+float amostras_tensao [1000];
+float media_tensao = 0;
+bool negativo = false;
+
+float sum_tensao = 0;
+float tensao_eficaz = 0;
+float amostras_corrente [1000];
+float media_corrente = 0;
+
+float tensao = 0;
+float square_tensao = 0;
+
+float corrente = 0;
+float sum_corrente = 0;
+float corrente_eficaz = 0;
+float square_corrente = 0;
+
+float potencia_instantanea=0;
+float sum_potencia = 0;
+float potencia_ativa =0;
+float potencia_aparente=0;
+float periodo_tensao = 0;
+float frequencia_tensao = 0;
+
+float periodo_corrente = 0;
+float frequencia_corrente = 0;
+
+float fator_potencia = 0;
+
+float mul_tensao = 0;
+float mul_corrente = 0;
+
+int count = 0;
+int counterfreq_tensao = 0;
+int counterfreq_corrente = 0;
+
+float tensao_eficaz_min = 0;
+float corrente_eficaz_min = 0;
+float potencia_ativa_min = 0;
+float potencia_aparente_min = 0;
+float fator_potencia_min = 0;
+float frequencia_tensao_min = 0;
+float frequencia_corrente_min = 0;
+
+
+float number1 = 0;
+float number2 = 0;
+float number3 = 0;
+float number4 = 0;
+float number5 = 0;
+float number6 = 0;
+float number7 = 0;
+float number8 = 0;
+
+
+char ssid[] = "Mi Phone";   // your network SSID (name) 
+char pass[] = "agrafador1";   // your network password
+int keyIndex = 0;            // your network key Index number (needed only for WEP)
+WiFiClient  client;
+
+unsigned long myChannelNumber = 1762572;
+const char * myWriteAPIKey = "8ZOTD2AA0OCRL4PT";
+
+// Initialize our values
+String myStatus = "";
+
+void setup() {
+  Serial.begin(115200);  //Initialize serial
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for Leonardo native USB port only
+  }
+  
+  WiFi.mode(WIFI_STA);   
+  ThingSpeak.begin(client);  // Initialize ThingSpeak
+}
+
+void loop() {
+
+media_tensao = 0;
+media_corrente = 0;
+tensao_eficaz_min = 0;
+  corrente_eficaz_min = 0;
+  potencia_ativa_min = 0;
+  potencia_aparente_min = 0;
+  fator_potencia_min = 0;
+  frequencia_tensao_min = 0;
+  frequencia_corrente_min = 0;
+
+while(count < 6){
+   counterfreq_tensao = 0;  
+   counterfreq_corrente = 0;
+for(int index = 0; index < 1000; index++)
+{
+    timer_aux = micros();
+    amostras_tensao[index] = (3.3)*analogRead(porta_tensao)/4096;
+    media_tensao = media_tensao + amostras_tensao[index];
+  
+    amostras_corrente[index] = (3.3)*analogRead(porta_corrente)/4096;
+    media_corrente = media_corrente + amostras_corrente[index];
+         
+    while(micros() - timer_aux < 200){
+
+    }
+
+
+}
+
+      media_tensao = media_tensao/1000;
+      media_corrente = media_corrente/1000;
+
+  counterfreq_tensao = 0;
+  counterfreq_corrente = 0;
+  
+  for(int index = 0; index < 1000; index++)
+  {
+    amostras_tensao[index] = 2*132*(amostras_tensao[index] - media_tensao);
+    //Serial.println(amostras_tensao[index]);
+    
+    square_tensao = (amostras_tensao[index])*(amostras_tensao[index]);
+    sum_tensao = sum_tensao + square_tensao;
+  
+    amostras_corrente[index] = 20*(amostras_corrente[index] - media_corrente);
+    
+    square_corrente = (amostras_corrente[index])*(amostras_corrente[index]);
+    sum_corrente = sum_corrente + square_corrente;
+    //Serial.println(amostras_corrente[index]);
+  
+  
+    potencia_instantanea = amostras_tensao[index] * amostras_corrente[index];
+    sum_potencia = sum_potencia + potencia_instantanea; 
+    
+    mul_tensao=   amostras_tensao[index] * amostras_tensao[index-1];
+    
+    
+    if(mul_tensao < 0 && periodo_tensao == 0){
+      if(counterfreq_tensao == 0){
+        Serial.println("wappm");
+        index_inicial_tensao = index;
+        counterfreq_tensao++;
+      }
+      else{
+        index_final_tensao = index;
+        periodo_tensao = 2*(index_final_tensao - index_inicial_tensao);
+        Serial.println("wappmmm22");
+      }
+    }
+
+
+    mul_corrente = amostras_corrente[index] * amostras_corrente[index-1];
+    
+    if(mul_corrente < 0 && periodo_corrente == 0){
+      if(counterfreq_corrente == 0){
+        Serial.println("wappm");
+        index_inicial_corrente = index;
+        counterfreq_corrente++;
+      }
+      else{
+        index_final_corrente = index;
+        periodo_corrente = 2*(index_final_corrente - index_inicial_corrente);
+        Serial.println("wappmmm22");
+      }
+    }
+  }
+    
+    tensao = sum_tensao/1000;
+    tensao_eficaz = sqrt(tensao);
+    Serial.print("Tensao:");
+    Serial.println(tensao_eficaz);
+  
+    corrente = sum_corrente/1000;
+    corrente_eficaz = sqrt(corrente);
+    Serial.print("Corrente:");
+    Serial.println(corrente_eficaz);
+  
+    potencia_ativa = sum_potencia/1000;
+    Serial.print("potencia_ativa:");
+    Serial.println(potencia_ativa);
+  
+    potencia_aparente = tensao_eficaz * corrente_eficaz;
+    Serial.print("potencia_aparente:");
+    Serial.println(potencia_aparente);
+  
+    fator_potencia = potencia_ativa / potencia_aparente;
+    Serial.print("fator_potencia:");
+    Serial.println(fator_potencia);
+
+    //periodo = 2*(index_final - index_inicial);
+   
+    float aux_tensao = periodo_tensao*200*pow(10,-6);
+    float aux_corrente = periodo_corrente*200Ppow(10,-6);
+    frequencia_tensao = 1/aux_tensao;
+    frequencia_corrente = 1/aux_corrente;
+    Serial.print("feT");
+    Serial.println(frequencia_tensao);
+    Serial.print("feI");
+    Serial.println(frequencia_corrente);
+  
+    index_final_tensao = 0;
+    index_inicial_tensao = 0;
+     index_final_corrente = 0;
+    index_inicial_corrente = 0;
+    //frequencia = 1/(periodo);
+
+    tensao_eficaz_min += tensao_eficaz;
+    corrente_eficaz_min += corrente_eficaz;
+    potencia_ativa_min += potencia_ativa;
+    potencia_aparente_min += potencia_aparente;
+    fator_potencia_min += fator_potencia;
+    frequencia_tensao_min += frequencia_tensao;
+    frequencia_corrente_min += frequencia_corrente;
+
+    sum_tensao = 0;
+    sum_corrente = 0;
+    sum_potencia = 0;
+
+    count++;
+        
+    delay(10000);
+}
+  count = 0;  
+  number1 = tensao_eficaz_min/6;
+  number2 = corrente_eficaz_min/6;
+  number3 = potencia_ativa_min/6;
+  number4 = potencia_aparente_min/6;
+  number5 = fator_potencia_min/6;
+  number6 = number3/60000;
+  number7 = frequencia_tensao_min/6;
+  number8 = frequencia_corrente_min/6;
+
+
+  
+
+  // Connect or reconnect to WiFi
+  if(WiFi.status() != WL_CONNECTED){
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(SECRET_SSID);
+    while(WiFi.status() != WL_CONNECTED){
+      WiFi.begin(ssid, pass);  // Connect to WPA/WPA2 network. Change this line if using open or WEP network
+      Serial.print(".");
+      delay(5000);     
+    } 
+    Serial.println("\nConnected.");
+  }
+
+  // set the fields with the values
+  ThingSpeak.setField(1, number1);
+  ThingSpeak.setField(2, number2);
+  ThingSpeak.setField(3, number3);
+  ThingSpeak.setField(4, number4);
+  ThingSpeak.setField(5, number5);
+  ThingSpeak.setField(6, number6);
+  ThingSpeak.setField(7, number7);
+  ThingSpeak.setField(8, number8);
+
+
+
+
+
+  // figure out the status message
+  if(number1 > number2){
+    myStatus = String("field1 is greater than field2"); 
+  }
+  else if(number1 < number2){
+    myStatus = String("field1 is less than field2");
+  }
+  else{
+    myStatus = String("field1 equals field2");
+  }
+  
+  // set the status
+  ThingSpeak.setStatus(myStatus);
+  
+  // write to the ThingSpeak channel
+  int x = ThingSpeak.writeFields(myChannelNumber, myWriteAPIKey);
+  if(x == 200){
+    Serial.println("Channel update successful.");
+  }
+  
+  else{
+    Serial.println("Problem updating channel. HTTP error code " + String(x));
+  }
+  
+  // change the values
+  number1++;
+  if(number1 > 99){
+    number1 = 0;
+  }
+  number2 = random(0,100);
+  number3 = random(0,100);
+  number4 = random(0,100);
+  
+}
