@@ -28,7 +28,7 @@
 #include "ThingSpeak.h" // always include thingspeak header file after other header files and custom macros
 
 int porta_tensao = 35;
-int porta_corrente = 34 ; //MUDAAAAAAAAAAAAAAAAAAAAAAAAAAAAAR PARA 25
+int porta_corrente = 34 ;
 //int index = 0;
 int index_final_tensao = 0;
 int index_inicial_tensao = 0;
@@ -92,8 +92,8 @@ float number7 = 0;
 float number8 = 0;
 
 
-char ssid[] = "Mi Phone";   // your network SSID (name) 
-char pass[] = "agrafador1";   // your network password
+char ssid[] = "";   // your network SSID (name) 
+char pass[] = "";   // your network password
 int keyIndex = 0;            // your network key Index number (needed only for WEP)
 WiFiClient  client;
 
